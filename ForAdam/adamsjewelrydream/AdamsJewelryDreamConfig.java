@@ -49,10 +49,21 @@ public interface AdamsJewelryDreamConfig extends Config {
     }
     
     @ConfigItem(
+            keyName = "staffType",
+            name = "Staff Type",
+            description = "Select a specific staff to use. 'Any Available Staff' will use the first available staff from the bank.",
+            position = 3,
+            section = generalSection
+    )
+    default StaffType staffType() {
+        return StaffType.ANY;
+    }
+    
+    @ConfigItem(
             keyName = "useRunePouch",
             name = "Use Rune Pouch",
             description = "When enabled, the bot will consider runes in your rune pouch when calculating required runes. This saves inventory space for more jewelry.",
-            position = 3,
+            position = 4,
             section = generalSection
     )
     default boolean useRunePouch() {

@@ -39,6 +39,7 @@ public class AdamsJewelryDreamScript extends Script {
     private EnchantMode enchantMode;
     private boolean useStaff;
     private boolean useRunePouch;
+    private StaffType selectedStaffType;
     
     // Maximum number of consecutive errors allowed before script resets
     private static final int MAX_ERROR_COUNT = 5;
@@ -109,12 +110,14 @@ public class AdamsJewelryDreamScript extends Script {
         this.enchantMode = config.enchantMode();
         this.useStaff = config.useStaff();
         this.useRunePouch = config.useRunePouch();
+        this.selectedStaffType = config.staffType();
         
         // Log initial config values
         log.info("Starting AdamsJewelryDream script with config:");
         log.info("  Jewelry: {}", this.selectedJewelry);
         log.info("  Mode: {}", this.enchantMode);
         log.info("  Use Staff: {}", this.useStaff);
+        log.info("  Staff Type: {}", this.selectedStaffType);
         log.info("  Use Rune Pouch: {}", this.useRunePouch);
 
         if (this.selectedJewelry == null) {
@@ -295,7 +298,7 @@ public class AdamsJewelryDreamScript extends Script {
             // Open bank if not already open
             if (!Rs2Bank.isOpen()) {
                 if (!Rs2Bank.isNearBank(BankLocation.GRAND_EXCHANGE, 15)) {
-                    Rs2Bank.walkToBank();
+                    Rs2Bank.walkToBank(BankLocation.GRAND_EXCHANGE);
                     Global.sleepUntil(() -> Rs2Bank.isNearBank(BankLocation.GRAND_EXCHANGE, 15), 10000);
                     return;
                 }
@@ -327,21 +330,53 @@ public class AdamsJewelryDreamScript extends Script {
             // Equip staff if needed
             if (useStaff) {
                 boolean hasStaff = false;
-                for (int staffId : staffItemIds) {
-                    if (Rs2Equipment.isWearing(staffId)) {
-                        hasStaff = true;
-                        break;
-                    }
-                }
                 
-                if (!hasStaff) {
+                // Check if already equipped with appropriate staff
+                if (selectedStaffType != StaffType.ANY) {
+                    // User selected a specific staff
+                    List<Integer> selectedStaffIds = selectedStaffType.getStaffItemIds();
+                    if (selectedStaffIds != null) {
+                        for (int staffId : selectedStaffIds) {
+                            if (Rs2Equipment.isWearing(staffId)) {
+                                hasStaff = true;
+                                break;
+                            }
+                        }
+                        
+                        // If not wearing the selected staff, try to get it from bank
+                        if (!hasStaff) {
+                            for (int staffId : selectedStaffIds) {
+                                if (Rs2Bank.hasItem(staffId)) {
+                                    Rs2Bank.withdrawOne(staffId);
+                                    Global.sleepUntil(() -> Rs2Inventory.hasItem(staffId), 800);
+                                    Rs2Inventory.interact(staffId, "Wield");
+                                    Global.sleepUntil(() -> Rs2Equipment.isWearing(staffId), 800);
+                                    hasStaff = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Check if wearing any staff
                     for (int staffId : staffItemIds) {
-                        if (Rs2Bank.hasItem(staffId)) {
-                            Rs2Bank.withdrawOne(staffId);
-                            Global.sleepUntil(() -> Rs2Inventory.hasItem(staffId), 800);
-                            Rs2Inventory.interact(staffId, "Wield");
-                            Global.sleepUntil(() -> Rs2Equipment.isWearing(staffId), 800);
+                        if (Rs2Equipment.isWearing(staffId)) {
+                            hasStaff = true;
                             break;
+                        }
+                    }
+                    
+                    // If not wearing any staff, get the first available one
+                    if (!hasStaff) {
+                        for (int staffId : staffItemIds) {
+                            if (Rs2Bank.hasItem(staffId)) {
+                                Rs2Bank.withdrawOne(staffId);
+                                Global.sleepUntil(() -> Rs2Inventory.hasItem(staffId), 800);
+                                Rs2Inventory.interact(staffId, "Wield");
+                                Global.sleepUntil(() -> Rs2Equipment.isWearing(staffId), 800);
+                                hasStaff = true;
+                                break;
+                            }
                         }
                     }
                 }
